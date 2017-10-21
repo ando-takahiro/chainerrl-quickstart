@@ -16,6 +16,7 @@ from chainerrl.recurrent import RecurrentChainMixin
 from chainerrl import v_function
 import gym
 import numpy as np
+from gpu_a3c import GPU_A3C
 
 
 class QHead(chainer.Chain):
@@ -128,9 +129,6 @@ def main():
     else:
         model = A3CFF(obs_size=obs_size, n_actions=n_actions)
 
-    if args.gpu >= 0:
-        model.to_gpu(args.gpu)
-
     opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
     opt.setup(model)
     opt.add_hook(chainer.optimizer.GradientClipping(40))
@@ -143,10 +141,14 @@ def main():
     # a converter as a feature extractor function phi.
     phi = lambda x: x.astype(np.float32, copy=False)
 
-    agent = a3c.A3C(model, opt, t_max=args.t_max, gamma=0.99,
+    agent = GPU_A3C(model, opt, t_max=args.t_max, gamma=0.99,
                     beta=args.beta, phi=phi)
     if args.load:
         agent.load(args.load)
+
+    if args.gpu >= 0:
+        agent.model.to_gpu(args.gpu)
+        agent.shared_model.to_gpu(args.gpu)
 
     def make_env(process_idx, test):
         env = gym.make('CartPole-v0')
