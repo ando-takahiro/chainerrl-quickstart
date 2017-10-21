@@ -17,6 +17,7 @@ from chainerrl import v_function
 import gym
 import numpy as np
 
+
 class QHead(chainer.Chain):
 
     def __init__(self, obs_size, n_hidden_channels=50):
@@ -24,7 +25,7 @@ class QHead(chainer.Chain):
         with self.init_scope():
             self.l0 = L.Linear(obs_size, n_hidden_channels)
             self.l1 = L.Linear(n_hidden_channels, n_hidden_channels)
-            # self.l2 = L.Linear(n_hidden_channels, n_actions)
+            self.l2 = L.Linear(n_hidden_channels, n_hidden_channels)
         self.n_output_channels = n_hidden_channels
 
     def __call__(self, x, test=False):
@@ -35,7 +36,8 @@ class QHead(chainer.Chain):
         """
         h = F.tanh(self.l0(x))
         h = F.tanh(self.l1(h))
-        return h #self.l2(h)
+        return F.tanh(self.l2(h))
+
 
 class A3CFF(chainer.ChainList, a3c.A3CModel):
 
@@ -91,7 +93,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
     parser.add_argument('--seed', type=int, default=None)
-    parser.add_argument('--outdir', type=str, default=None)
+    parser.add_argument('--outdir', type=str, default='./result')
     parser.add_argument('--use-sdl', action='store_true')
     parser.add_argument('--t-max', type=int, default=5)
     parser.add_argument('--max-episode-len', type=int, default=200)#10000)
@@ -105,7 +107,7 @@ def main():
     parser.add_argument('--use-lstm', action='store_true')
     parser.add_argument('--demo', action='store_true', default=False)
     parser.add_argument('--load', type=str, default='')
-    parser.add_argument('--save', type=str, default='')
+    parser.add_argument('--gpu', type=int, default=-1)
     parser.set_defaults(use_sdl=False)
     parser.set_defaults(use_lstm=False)
     args = parser.parse_args()
@@ -125,6 +127,9 @@ def main():
         model = A3CLSTM(obs_size=obs_size, n_actions=n_actions)
     else:
         model = A3CFF(obs_size=obs_size, n_actions=n_actions)
+
+    if args.gpu >= 0:
+        model.to_gpu(args.gpu)
 
     opt = rmsprop_async.RMSpropAsync(lr=7e-4, eps=1e-1, alpha=0.99)
     opt.setup(model)
@@ -181,11 +186,6 @@ def main():
             global_step_hooks=[lr_decay_hook],
             logger=logger
         )
-
-        # Save an agent to the 'agent' directory
-        if args.save:
-            agent.save(args.save)
-
 
     print('Finished.')
 
