@@ -85,8 +85,6 @@ def main():
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(logging.DEBUG)
     logger.addHandler(stream_handler)
-    # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='')
-    logger.info('hello')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('processes', type=int)
